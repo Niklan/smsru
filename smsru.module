@@ -1,0 +1,48 @@
+<?php
+
+/**
+ * @file
+ *   Main file for hooks.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function smsru_menu() {
+  $items['admin/config/services/smsru'] = array(
+    'title' => t('SMS.ru settings'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('smsru_settings_page'),
+    'access arguments' => array('smsru access settings'),
+    'file' => 'smsru.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+    'weight' => 0
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function smsru_permission() {
+  return array(
+    'smsru access settings' => array(
+      'title' => t('Access SMS.ru settings'),
+    ),
+  );
+}
+
+/**
+ * @return \SmsRu
+ */
+function smsru_class() {
+  return new SmsRu();
+}
+
+/**
+ * Returns API key if exists, or NULL.
+ */
+function _smsru_get_api_key() {
+  return variable_get('smsru_api_key', NULL);
+}

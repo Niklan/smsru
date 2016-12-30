@@ -1,0 +1,13 @@
+<?php
+
+/**
+ * @file
+ *   Installation and deinstallation process.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function smsru_uninstall() {
+  variable_del('smsru_*');
+}

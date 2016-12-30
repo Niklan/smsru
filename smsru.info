@@ -1,0 +1,10 @@
+name = SMS.ru
+description = SMS.ru integration.
+core = 7.x
+version = 7.x-1.x
+
+package = Custom
+
+files[] = includes/SmsRu.inc
+
+configure = admin/config/services/smsru
