@@ -2,12 +2,5 @@
 
 /**
  * @file
- *   Installation and deinstallation process.
+ * Install, update and uninstall functions for the SMS.ru module.
  */
-
-/**
- * Implements hook_uninstall().
- */
-function smsru_uninstall() {
-  variable_del('smsru_*');
-}

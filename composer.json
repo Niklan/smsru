@@ -1,0 +1,20 @@
+{
+    "name": "drupal/smsru",
+    "description": "The SMS.ru integration.",
+    "type": "drupal-module",
+    "homepage": "https://www.drupal.org/sandbox/niklan/2877577",
+    "authors": [
+        {
+            "name": "Nikita Malyshev (niklan)",
+            "homepage": "https://niklan.net"
+        }
+    ],
+    "support": {
+        "issues": "https://www.drupal.org/project/issues/2877577"
+    },
+    "license": "GPL-2.0+",
+    "require": {
+        "php": ">=7.2",
+        "ext-json": "*"
+    }
+}
