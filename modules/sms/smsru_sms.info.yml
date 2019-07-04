@@ -4,6 +4,6 @@ description: The SMS.ru integration for SMS Framework.
 package: SMS Framework
 core: 8.x
 dependencies:
-  - smsru
-  - sms
+  - smsru:smsru
+  - sms:sms
 php: 7.2
