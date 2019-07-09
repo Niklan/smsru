@@ -11,6 +11,11 @@ use Drupal\sms\Message\SmsMessageReportStatus;
 use Drupal\sms\Message\SmsMessageResult;
 use Drupal\sms\Message\SmsMessageResultInterface;
 use Drupal\sms\Plugin\SmsGatewayPluginBase;
+use Drupal\smsru\Auth\ApiIdAuth;
+use Drupal\smsru\Auth\LoginPasswordAuth;
+use Drupal\smsru\Client\HttpClient;
+use Drupal\smsru\Message\Message;
+use Drupal\smsru\SmsRu as SmsRuApi;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -147,6 +152,13 @@ class SmsRu extends SmsGatewayPluginBase implements ContainerFactoryPluginInterf
       ],
     ];
 
+    $form['api_settings']['test_mode'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Testing mode'),
+      '#description' => $this->t('Check the box if you want the messages to be sent in test mode. You will be able to see the messages in your SMS.ru account.'),
+      '#default_value' => isset($auth_settings['test_mode']) ? $auth_settings['test_mode'] : FALSE,
+    ];
+
     $form['api_settings']['forget_credentials'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Forget credentials'),
@@ -223,6 +235,9 @@ class SmsRu extends SmsGatewayPluginBase implements ContainerFactoryPluginInterf
       }
     }
 
+    // Remove this from being stored.
+    unset($auth_settings_submitted['forget_credentials']);
+
     $this->state->set('sms_smsru.auth_settings', $auth_settings_submitted);
   }
 
@@ -230,14 +245,36 @@ class SmsRu extends SmsGatewayPluginBase implements ContainerFactoryPluginInterf
    * {@inheritdoc}
    */
   public function send(SmsMessageInterface $sms): SmsMessageResultInterface {
+    $smsru = $this->initSmsRuApi();
     $result = new SmsMessageResult();
     $reports = [];
 
     foreach ($sms->getRecipients() as $recipient) {
-      // ...Send message with API
+      $message = new Message($recipient, $sms->getMessage());
+      if ($sender = $sms->getSender()) {
+        $message->setFrom($sender);
+      }
+
+      if ($this->state->get('sms_smsru.auth_settings')['test_mode']) {
+        $message->setTest(TRUE);
+      }
+
+      $response = $smsru->smsSend($message);
+
+      if ($response->getStatusCode() == 100) {
+        $sms_status = SmsMessageReportStatus::QUEUED;
+      }
+      else {
+        $sms_status = SmsMessageReportStatus::ERROR;
+      }
+
+      $data = $response->getData();
+      $sms_info = reset($data['sms']);
+
       $reports[] = (new SmsDeliveryReport())
+        ->setMessageId($sms_info['sms_id'])
         ->setRecipient($recipient)
-        ->setStatus(SmsMessageReportStatus::DELIVERED);
+        ->setStatus($sms_status);
     }
 
     $result->setReports($reports);
@@ -246,10 +283,99 @@ class SmsRu extends SmsGatewayPluginBase implements ContainerFactoryPluginInterf
   }
 
   /**
+   * Initialize SmsRu API object.
+   *
+   * @return \Drupal\smsru\SmsRu
+   *   The SMS.ru API object.
+   */
+  protected function initSmsRuApi(): SmsRuApi {
+    $auth_settings = $this->state->get('sms_smsru.auth_settings');
+
+    switch ($auth_settings['auth_type']) {
+      case self::AUTH_API_ID:
+        $smsru_auth = new ApiIdAuth($auth_settings['api_id']);
+        break;
+
+      case self::AUTH_LOGIN_PASS:
+        $smsru_auth = new LoginPasswordAuth($auth_settings['login'], $auth_settings['pass']);
+        break;
+    }
+
+    $http_client = new HttpClient($smsru_auth);
+
+    return new SmsRuApi($http_client);
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function getCreditsBalance(): ?float {
-    return 123;
+    $smsru = $this->initSmsRuApi();
+    $response = $smsru->myBalance();
+    if ($response->getStatusCode() == 100) {
+      return $response->getData()['balance'];
+    }
+
+    return NULL;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getDeliveryReports(array $message_ids = NULL): array {
+    $smsru = $this->initSmsRuApi();
+    $reports = [];
+
+    foreach ($message_ids as $message_id) {
+      $response = $smsru->smsStatus($message_id);
+
+      if ($response->getStatus() != 'OK') {
+        continue;
+      }
+
+      $data = $response->getData();
+      $sms_info = reset($data['sms']);
+
+      switch ($sms_info['status_code']) {
+        case '100':
+        case '101':
+        case '102':
+          $sms_status = SmsMessageReportStatus::QUEUED;
+          break;
+
+        case '103':
+          $sms_status = SmsMessageReportStatus::DELIVERED;
+          break;
+
+        case '104':
+          $sms_status = SmsMessageReportStatus::EXPIRED;
+          break;
+
+        case '105':
+        case '106':
+        case '107':
+        case '108':
+          $sms_status = SmsMessageReportStatus::REJECTED;
+          break;
+
+        case '150':
+          $sms_status = SmsMessageReportStatus::INVALID_RECIPIENT;
+          break;
+
+        case '203':
+          $sms_status = SmsMessageReportStatus::CONTENT_INVALID;
+          break;
+
+        default:
+          $sms_status = SmsMessageReportStatus::ERROR;
+          break;
+      }
+
+      $reports[] = (new SmsDeliveryReport())
+        ->setStatus($sms_status);
+    }
+
+    return $reports;
   }
 
 }

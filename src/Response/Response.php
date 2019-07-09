@@ -62,7 +62,7 @@ class Response implements ResponseInterface {
    * {@inheritdoc}
    */
   public function getData(): array {
-    return $this->getData();
+    return $this->data;
   }
 
 }
