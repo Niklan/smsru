@@ -8,6 +8,6 @@
 /**
  * Implements hook_uninstall().
  */
-function smsru_sms_uninstall() {
-  \Drupal::state()->delete('sms_smsru.auth_settings');
+function smsru_uninstall() {
+  \Drupal::state()->delete('smsru.smsframework.auth_settings');
 }

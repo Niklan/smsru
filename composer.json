@@ -5,7 +5,7 @@
     "homepage": "https://www.drupal.org/sandbox/niklan/2877577",
     "authors": [
         {
-            "name": "Nikita Malyshev (niklan)",
+            "name": "Nikita Malyshev (Niklan)",
             "homepage": "https://niklan.net"
         }
     ],
@@ -16,5 +16,8 @@
     "require": {
         "php": ">=7.2",
         "ext-json": "*"
+    },
+    "suggest": {
+        "drupal/sms": "Provides interface and some other functionality for SMS."
     }
 }

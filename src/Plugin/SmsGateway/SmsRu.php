@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\smsru_sms\Plugin\SmsGateway;
+namespace Drupal\smsru\Plugin\SmsGateway;
 
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
@@ -79,8 +79,18 @@ class SmsRu extends SmsGatewayPluginBase implements ContainerFactoryPluginInterf
   /**
    * {@inheritdoc}
    */
+  public function defaultConfiguration() {
+    return [
+      'auth_type' => self::AUTH_API_ID,
+      'test_mode' => FALSE,
+    ] + parent::defaultConfiguration();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
-    $auth_settings = $this->state->get('sms_smsru.auth_settings');
+    $auth_settings = $this->state->get('smsru.smsframework.auth_settings');
 
     $form['api_settings'] = [
       '#type' => 'details',
@@ -97,7 +107,7 @@ class SmsRu extends SmsGatewayPluginBase implements ContainerFactoryPluginInterf
         self::AUTH_API_ID => $this->t('API ID (recommended)'),
         self::AUTH_LOGIN_PASS => $this->t('Login and password'),
       ],
-      '#default_value' => isset($auth_settings['auth_type']) ? $auth_settings['auth_type'] : self::AUTH_API_ID,
+      '#default_value' => $this->configuration['auth_type'],
     ];
 
     // API ID.
@@ -141,7 +151,7 @@ class SmsRu extends SmsGatewayPluginBase implements ContainerFactoryPluginInterf
       '#states' => [
         'invisible' => $this->isAuthTypeIsApiId(),
       ],
-      '#default_value' => isset($auth_settings['login']) ? $auth_settings['login'] : '',
+      '#default_value' => !empty($auth_settings['login']) ? $auth_settings['login'] : '',
     ];
 
     $form['api_settings']['pass'] = [
@@ -156,13 +166,13 @@ class SmsRu extends SmsGatewayPluginBase implements ContainerFactoryPluginInterf
       '#type' => 'checkbox',
       '#title' => $this->t('Testing mode'),
       '#description' => $this->t('Check the box if you want the messages to be sent in test mode. You will be able to see the messages in your SMS.ru account.'),
-      '#default_value' => isset($auth_settings['test_mode']) ? $auth_settings['test_mode'] : FALSE,
+      '#default_value' => $this->configuration['test_mode'],
     ];
 
     $form['api_settings']['forget_credentials'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Forget credentials'),
-      '#description' => $this->t('Check this to remove API ID and password from storage on submit.'),
+      '#description' => $this->t('Check this to remove API ID, login and password from storage on submit.'),
     ];
 
     return $form;
@@ -186,7 +196,7 @@ class SmsRu extends SmsGatewayPluginBase implements ContainerFactoryPluginInterf
    * {@inheritdoc}
    */
   public function validateConfigurationForm(array &$form, FormStateInterface $form_state): void {
-    $auth_settings = $this->state->get('sms_smsru.auth_settings');
+    $auth_settings = $this->state->get('smsru.smsframework.auth_settings', []);
     $auth_settings_submitted = $form_state->getValue('api_settings');
 
     switch ($form_state->getValue('auth_type')) {
@@ -215,30 +225,32 @@ class SmsRu extends SmsGatewayPluginBase implements ContainerFactoryPluginInterf
    * {@inheritdoc}
    */
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state): void {
-    $auth_settings = $this->state->get('sms_smsru.auth_settings', [
-      'pass' => '',
-      'api_id' => '',
-    ]);
+    $auth_settings = $this->state->get('smsru.smsframework.auth_settings', []);
     $auth_settings_submitted = $form_state->getValue('api_settings');
 
     if ($auth_settings_submitted['forget_credentials']) {
-      $auth_settings_submitted['pass'] = '';
-      $auth_settings_submitted['api_id'] = '';
+      $auth_settings['pass'] = '';
+      $auth_settings['api_id'] = '';
+      $auth_settings['login'] = '';
     }
     else {
-      if (empty($auth_settings_submitted['pass'])) {
-        $auth_settings_submitted['pass'] = $auth_settings['pass'];
+      if (!empty($auth_settings_submitted['login'])) {
+        $auth_settings['login'] = $auth_settings_submitted['login'];
       }
 
-      if (empty($auth_settings_submitted['api_id'])) {
-        $auth_settings_submitted['api_id'] = $auth_settings['api_id'];
+      if (!empty($auth_settings_submitted['pass'])) {
+        $auth_settings['pass'] = $auth_settings_submitted['pass'];
+      }
+
+      if (!empty($auth_settings_submitted['api_id'])) {
+        $auth_settings['api_id'] = $auth_settings_submitted['api_id'];
       }
     }
 
-    // Remove this from being stored.
-    unset($auth_settings_submitted['forget_credentials']);
+    $this->configuration['auth_type'] = $auth_settings_submitted['auth_type'];
+    $this->configuration['test_mode'] = $auth_settings_submitted['test_mode'];
 
-    $this->state->set('sms_smsru.auth_settings', $auth_settings_submitted);
+    $this->state->set('smsru.smsframework.auth_settings', $auth_settings);
   }
 
   /**
@@ -255,7 +267,7 @@ class SmsRu extends SmsGatewayPluginBase implements ContainerFactoryPluginInterf
         $message->setFrom($sender);
       }
 
-      if ($this->state->get('sms_smsru.auth_settings')['test_mode']) {
+      if ($this->configuration['test_mode']) {
         $message->setTest(TRUE);
       }
 
@@ -289,9 +301,9 @@ class SmsRu extends SmsGatewayPluginBase implements ContainerFactoryPluginInterf
    *   The SMS.ru API object.
    */
   protected function initSmsRuApi(): SmsRuApi {
-    $auth_settings = $this->state->get('sms_smsru.auth_settings');
+    $auth_settings = $this->state->get('smsru.smsframework.auth_settings');
 
-    switch ($auth_settings['auth_type']) {
+    switch ($this->configuration['auth_type']) {
       case self::AUTH_API_ID:
         $smsru_auth = new ApiIdAuth($auth_settings['api_id']);
         break;
