@@ -22,7 +22,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * SMS.ru gateway plugin.
  *
  * @SmsGateway(
- *   id = "smsru_sms",
+ *   id = "smsru",
  *   label = @Translation("SMS.ru"),
  *   credit_balance_available = TRUE,
  * )
