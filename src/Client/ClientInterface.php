@@ -18,7 +18,8 @@ interface ClientInterface {
    * @param array $params
    *   The API params send with request.
    *
-   * @return mixed
+   * @return \Drupal\smsru\Response\ResponseInterface
+   *   The API response.
    */
   public function request(string $endpoint, array $params = []): ResponseInterface;
 
