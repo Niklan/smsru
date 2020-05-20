@@ -2,6 +2,7 @@ name: SMS.ru
 type: module
 description: The SMS.ru integration.
 core: 8.x
+core_version_requirement: ^8.8 || ^9
 dependencies:
   - drupal:system (>= 8.7.0)
 php: 7.2
