@@ -15,7 +15,8 @@
     "license": "GPL-2.0+",
     "require": {
         "php": ">=7.2",
-        "ext-json": "*"
+        "ext-json": "*",
+        "drupal/core": "^8.7.7 || ^9"
     },
     "suggest": {
         "drupal/sms": "Provides interface and some other functionality for SMS."
