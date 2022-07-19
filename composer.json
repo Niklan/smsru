@@ -16,7 +16,7 @@
     "require": {
         "php": ">=7.2",
         "ext-json": "*",
-        "drupal/core": "^8.7.7 || ^9"
+        "drupal/core": "^8.7.7 || ^9 || ^10"
     },
     "suggest": {
         "drupal/sms": "Provides interface and some other functionality for SMS."
